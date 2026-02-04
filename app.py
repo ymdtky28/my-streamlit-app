@@ -20,3 +20,12 @@ def load_data():
    # data を date に一文字変えるだけです！
 # 21行目： data を date（今のフォルダ名）に合わせます
 target = 'date/成績表.xlsx - 2025.csv'
+# 22行目から下にこれを貼り付けてください
+    if os.path.exists(target):
+        return pd.read_csv(target, encoding='cp932')
+    return None
+
+df = load_data()
+if df is not None:
+    st.success("読み込み成功！")
+    st.dataframe(df)
