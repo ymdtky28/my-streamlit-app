@@ -68,4 +68,13 @@ if uploaded_file is not None:
         # 書式設定（見た目をエクセルに合わせる）
         format_dict = {}
         for col in display_final.columns:
-            if col in ['打率', '長打率', '出塁率
+            if col in ['打率', '長打率', '出塁率', '得点圏']:
+                format_dict[col] = lambda x: f"{float(x):.3f}".replace("0.", ".") if pd.notnull(x) and x != '' and x != 'nan' else str(x)
+            else:
+                # 三振率や合計の「6.70」などの文字をそのまま維持
+                format_dict[col] = lambda x: str(x) if pd.notnull(x) and str(x) != 'nan' else ""
+
+        st.success("アップロード完了！")
+        st.dataframe(display_final.style.format(format_dict), use_container_width=True, hide_index=True)
+else:
+    st.info("上のボタンからエクセルファイルをアップロードしてください。")
