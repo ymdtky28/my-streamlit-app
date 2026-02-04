@@ -1,55 +1,49 @@
-import streamlit as st
 import pandas as pd
 
-# ページの設定
-st.set_page_config(page_title="トヨタ野球部 成績管理", layout="wide")
-
-st.title("⚾ 野球成績アップロード・閲覧サイト")
-
-# サイドバーでファイルをアップロード（xlsxに対応）
-st.sidebar.header("データ読み込み")
-uploaded_file = st.sidebar.file_uploader("成績表（Excel）を選択してください", type=["xlsx"])
-
-def load_data(file):
-    # Excelファイルを読み込む。5行目をヘッダーとする（skiprows=5）
-    # engine='openpyxl' を指定してExcel形式に対応させる
-    df = pd.read_excel(file, skiprows=5, engine='openpyxl')
+def load_and_process_data(file_path):
+    # CSVの読み込み（ヘッダーが5行目にあると想定）
+    # 元データの構造に合わせて skiprows を調整してください
+    df = pd.read_csv(file_path, skiprows=5)
     
-    # 「選手」列が空の行を削除（データの終わり以降の空行対策）
-    df = df.dropna(subset=['選手'])
+    # 列名のクリーニング（余計な空白を削除）
+    df.columns = [c.strip() for c in df.columns]
+    
+    # 数値列が文字列として読み込まれた場合の変換
+    numeric_cols = ['打席', '打数', '安打', '二塁打', '三塁打', '本塁打', '四球', '死球', '犠飛']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            
     return df
 
-if uploaded_file is not None:
-    try:
-        df = load_data(uploaded_file)
+def calculate_stats(df):
+    """
+    抽出されたデータから打率、出塁率、長打率を再計算する
+    """
+    stats = df.copy()
+    
+    # 打率 = 安打 / 打数
+    stats['打率'] = (stats['安打'] / stats['打数']).round(3)
+    
+    # 出塁率 = (安打 + 四球 + 死球) / (打数 + 四球 + 死球 + 犠飛)
+    denominator_obp = stats['打数'] + stats['四球'] + stats['死球'] + stats['犠飛']
+    stats['出塁率'] = ((stats['安打'] + stats['四球'] + stats['死球']) / denominator_obp).round(3)
+    
+    # 長打率 = 塁打数 / 打数
+    # ※単打 = 安打 - (二塁打 + 三塁打 + 本塁打)
+    # 塁打数 = 単打 + 2*二塁打 + 3*三塁打 + 4*本塁打
+    if '塁打数' in stats.columns:
+        stats['長打率'] = (stats['塁打数'] / stats['打数']).round(3)
         
-        # 選手検索機能
-        search_name = st.sidebar.text_input("選手名で検索", "")
-        if search_name:
-            df = df[df['選手'].str.contains(search_name)]
+    return stats
 
-        st.success(f"Excelファイル「{uploaded_file.name}」を読み込みました")
-        
-        st.subheader("📊 打撃成績一覧")
-        # 数値データが変な形式にならないよう調整して表示
-        st.dataframe(df, use_container_width=True, hide_index=True)
+# --- メイン処理 ---
+file_path = '打撃成績表_トヨタ全打者vs全投手.xlsx - Sheet1.csv'
+raw_data = load_and_process_data(file_path)
 
-        # 個別分析
-        st.divider()
-        st.subheader("👤 選手ピックアップ")
-        unique_players = df['選手'].unique()
-        selected_player = st.selectbox("詳細を見たい選手を選択", unique_players)
-        
-        player_stats = df[df['選手'] == selected_player].iloc[0]
-        
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("打率", f"{player_stats['打率']:.3f}" if isinstance(player_stats['打率'], float) else player_stats['打率'])
-        col2.metric("安打", int(player_stats['安打']))
-        col3.metric("本塁打", int(player_stats['本塁打']))
-        col4.metric("打点", int(player_stats['打点']))
+# 1. 選手ごとに集計したい場合
+player_summary = raw_data.groupby('選手').sum(numeric_only=True)
+final_stats = calculate_stats(player_summary)
 
-    except Exception as e:
-        st.error(f"エラーが発生しました: {e}")
-        st.info("Excelのフォーマットが正しいか確認してください（5行目までタイトル、6行目からヘッダーを想定）。")
-else:
-    st.info("左側のサイドバーからExcelファイル（.xlsx）をアップロードしてください。")
+# 結果の表示（上位5名）
+print(final_stats[['打席', '打数', '安打', '本塁打', '打率', '出塁率']].sort_values('打率', ascending=False).head())
