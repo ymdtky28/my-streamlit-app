@@ -18,4 +18,5 @@ else:
 # 3. 読み込みテスト
 def load_data():
    # data を date に一文字変えるだけです！
+# 21行目： data を date（今のフォルダ名）に合わせます
 target = 'date/成績表.xlsx - 2025.csv'
