@@ -24,25 +24,44 @@ df = load_data()
 
 if df is not None:
     try:
-        # 1. 数字の列だけを抽出して合計を計算
+        # --- 1. 全体の合計値を計算（計算用） ---
         numeric_cols = df.select_dtypes(include=['number']).columns
-        total_values = df[numeric_cols].sum()
+        total_sum = df[numeric_cols].sum()
         
-        # 2. 合計行を作成
-        total_df = pd.DataFrame(total_values).T
+        # --- 2. 合計行の作成 ---
+        total_df = pd.DataFrame(total_sum).T
         total_df['選手'] = '【全チーム合計】'
-        total_df['球団'] = 'ー' # 球団名は空欄またはハイフンに
+        total_df['球団'] = 'ー'
+
+        # --- 3. 率の再計算（合計行のみ） ---
+        # 打率 = 安打 / 打数
+        if total_df.loc[0, '打数'] > 0:
+            total_df.loc[0, '打率'] = total_df.loc[0, '安打'] / total_df.loc[0, '打数']
         
-        # 3. 元の全データと合計行を合体させる
-        df_all_with_total = pd.concat([df, total_df], ignore_index=True)
+        # 出塁率 = (安打 + 四球 + 死球) / (打数 + 四球 + 死球 + 犠飛)
+        on_base_den = total_df.loc[0, '打数'] + total_df.loc[0, '四球'] + total_df.loc[0, '死球'] + total_df.loc[0, '犠飛']
+        if on_base_den > 0:
+            total_df.loc[0, '出塁率'] = (total_df.loc[0, '安打'] + total_df.loc[0, '四球'] + total_df.loc[0, '死球']) / on_base_den
+            
+        # 長打率 = 塁打数 / 打数
+        if total_df.loc[0, '打数'] > 0:
+            total_df.loc[0, '長打率'] = total_df.loc[0, '塁打数'] / total_df.loc[0, '打数']
+
+        # --- 4. データの合体 ---
+        df_all = pd.concat([df, total_df], ignore_index=True)
+
+        # --- 5. 見た目を「.333」形式に整える ---
+        # 対象の列を小数点第3位で表示するように設定
+        rate_cols = ['打率', '長打率', '出塁率']
+        format_dict = {col: "{:.3f}" for col in rate_cols}
         
-        st.success("全データを表示しています（一番下に全体の合計を追加しました）")
+        st.success("全データを表示しています（率は計算し直しています）")
         
-        # 4. 表を表示
-        st.dataframe(df_all_with_total, use_container_width=True)
+        # 表示（formatを使って小数点以下を固定）
+        st.dataframe(df_all.style.format(format_dict), use_container_width=True)
             
     except Exception as e:
-        st.error(f"計算エラーが発生しました: {e}")
+        st.error(f"エラーが発生しました: {e}")
         st.dataframe(df, use_container_width=True)
 else:
     st.error("ファイルが見つかりません。")
