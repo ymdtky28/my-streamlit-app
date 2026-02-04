@@ -17,12 +17,5 @@ else:
 
 # 3. 読み込みテスト
 def load_data():
-    target = 'data/成績表.xlsx - 2025.csv'
-    if os.path.exists(target):
-        return pd.read_csv(target, encoding='cp932')
-    return None
-
-df = load_data()
-if df is not None:
-    st.success("読み込み成功！")
-    st.dataframe(df)
+   # data を date に一文字変えるだけです！
+target = 'date/成績表.xlsx - 2025.csv'
