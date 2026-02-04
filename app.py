@@ -36,17 +36,19 @@ if df is not None:
         # 3. 元の全データと合計行を合体させる
         df_all_with_total = pd.concat([df, total_df], ignore_index=True)
         
-        # 4. 「.300」形式（頭の0を消して小数点第3位まで）にする設定
-        # 対象：打率、長打率、出塁率
+        # 4. 特定の項目だけを野球形式（.300）にする設定
+        # 他の項目（安打など）は、このリストに入れないことで「今まで通り」になります
+        target_cols = ['打率', '長打率', '出塁率']
         format_dict = {}
-        for col in ['打率', '長打率', '出塁率']:
+        
+        for col in target_cols:
             if col in df_all_with_total.columns:
-                # 0.3333... を ".333" に変換する命令
+                # 0.300 を .300 に書き換える命令
                 format_dict[col] = lambda x: f"{x:.3f}".replace("0.", ".") if pd.notnull(x) else ""
         
-        st.success("全データを表示しています（野球形式の表示に整えました）")
+        st.success("全データを表示しています（率は野球形式、その他は標準表示）")
         
-        # 5. 表を表示（作成した書式を適用）
+        # 5. 表を表示（率の列だけに書式を適用し、他はそのまま）
         st.dataframe(df_all_with_total.style.format(format_dict), use_container_width=True)
             
     except Exception as e:
