@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import io
 
-st.set_page_config(page_title="野球成績表示", layout="wide")
-st.title("⚾ 野球成績 エクセルアップロード")
+st.set_page_config(page_title="野球成績表示・フィルター", layout="wide")
+st.title("⚾ 野球成績 フィルタリング表示")
 
 # --- ファイルアップローダー ---
 uploaded_file = st.file_uploader("エクセルファイル（.xlsx）を選択してください", type=["xlsx"])
@@ -22,58 +22,44 @@ def process_data(file):
         if '球団' in df_total_row.columns:
             df_total_row.iloc[0, df_total_row.columns.get_loc('球団')] = 'ー'
         
-        original_cols = df_main.columns.tolist()
-        
-        # --- 並べ替え ---
-        df_no_total = df_main[~df_main['選手'].str.contains('合計', na=False)].copy()
-        df_toyota = df_no_total[df_no_total['球団'] == 'トヨタ'].copy()
-        df_others = df_no_total[df_no_total['球団'] != 'トヨタ'].copy()
-
-        def sort_group(target_df):
-            if target_df.empty: return target_df
-            rika = target_df[target_df['選手'].str.contains('理化', na=False)].copy()
-            others = target_df[~target_df['選手'].str.contains('理化', na=False)].copy()
-            others['sort_key'] = others['選手'].str.extract('(\d+)').astype(float)
-            others = others.sort_values('sort_key').drop(columns=['sort_key'])
-            return pd.concat([others, rika], ignore_index=True)
-
-        df_display = pd.concat([sort_group(df_toyota), sort_group(df_others), df_total_row], ignore_index=True)
-        return df_display[original_cols]
+        return df_main, df_total_row
     except Exception as e:
         st.error(f"解析エラー: {e}")
-        return None
+        return None, None
 
 # --- メイン表示 ---
 if uploaded_file is not None:
-    df_result = process_data(uploaded_file)
+    df_main, df_total = process_data(uploaded_file)
     
-    if df_result is not None:
-        # 選手選択フィルター
-        player_list = df_result[df_result['選手'] != '【合計】']['選手'].unique().tolist()
-        selected = st.sidebar.multiselect("表示する選手を選択", player_list)
+    if df_main is not None:
+        st.sidebar.header("🔍 フィルター設定")
         
-        display_final = df_result.copy()
-        if selected:
-            display_final = df_result[df_result['選手'].isin(selected) | (df_result['選手'] == '【合計】')]
+        # 1. 球団フィルター
+        all_teams = df_main['球団'].unique().tolist()
+        selected_teams = st.sidebar.multiselect("球団を選択", all_teams, default=all_teams)
+        
+        # 2. 選手フィルター
+        # 球団で絞り込まれた後の選手リストを出す
+        temp_df = df_main[df_main['球団'].isin(selected_teams)]
+        all_players = temp_df['選手'].unique().tolist()
+        selected_players = st.sidebar.multiselect("選手を選択", all_players, default=all_players)
 
-        # --- 書式設定（エラー対策強化版） ---
-        def format_stats(val):
-            if pd.isnull(val) or str(val).strip() in ['', 'nan', 'ー', '-']:
-                return str(val) if pd.notnull(val) else ""
-            try:
-                # 数字に変換できる場合だけ .300 形式にする
-                num = float(val)
-                return f"{num:.3f}".replace("0.", ".")
-            except:
-                # 数字にできない文字（「ー」など）ならそのまま出す
-                return str(val)
+        # 3. 三振率フィルター（数値がある場合のみ）
+        # 文字列を数値に変換してスライダーを作成
+        if '三振率' in df_main.columns:
+            df_main['三振率_num'] = pd.to_numeric(df_main['三振率'], errors='coerce').fillna(0)
+            max_k_rate = float(df_main['三振率_num'].max())
+            k_threshold = st.sidebar.slider("三振率の上限設定", 0.0, max_k_rate, max_k_rate)
+            df_main = df_main[df_main['三振率_num'] <= k_threshold]
 
-        format_dict = {}
-        for col in display_final.columns:
-            if col in ['打率', '長打率', '出塁率', '得点圏']:
-                format_dict[col] = format_stats
-            else:
-                format_dict[col] = lambda x: str(x) if pd.notnull(x) and str(x) != 'nan' else ""
+        # --- 絞り込み実行 ---
+        df_filtered = df_main[
+            (df_main['球団'].isin(selected_teams)) & 
+            (df_main['選手'].isin(selected_players))
+        ].copy()
 
-        st.success("アップロード完了！")
-        st.dataframe(display_final.style.format(format_dict), use_container_width=True, hide_index=True)
+        # --- 並べ替え（トヨタ優先・背番号順・理化さん下） ---
+        df_toyota = df_filtered[df_filtered['球団'] == 'トヨタ'].copy()
+        df_others = df_filtered[df_filtered['球団'] != 'トヨタ'].copy()
+
+        def sort_group(target_df):
