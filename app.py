@@ -23,23 +23,21 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # --- ここから「トヨタ」に絞り込む処理 ---
-    # 「チーム」という名前の列から「トヨタ自動車」を探します
-    # ※列名が「チーム」でない場合は、エラーが出ないよう処理します
     try:
-        # チーム名に「トヨタ」を含む行だけを抜き出す
-        df_toyota = df[df['チーム'].str.contains('トヨタ', na=False)]
+        # 列名「球団」から「トヨタ」を含む行だけを抜き出す
+        df_toyota = df[df['球団'].str.contains('トヨタ', na=False)]
         
         if not df_toyota.empty:
-            st.success("トヨタ自動車のデータを表示しています")
+            st.success("トヨタのデータを表示しています")
             st.dataframe(df_toyota, use_container_width=True)
         else:
-            st.warning("「トヨタ」に一致するデータが見つかりませんでした。全データを表示します。")
+            # 万が一見つからない場合は、何が原因か探るために全データを表示
+            st.warning("「トヨタ」に一致するデータが見つかりませんでした。")
             st.dataframe(df, use_container_width=True)
             
-    except Exception:
-        # 万が一「チーム」という列名が違った場合は、全てのデータを表示
-        st.info("フィルタリングなしで全データを表示します。")
+    except Exception as e:
+        # 「球団」という列が見つからない場合などのエラー対策
+        st.info("全データを表示します。")
         st.dataframe(df, use_container_width=True)
 else:
     st.error("ファイルが見つかりません。")
