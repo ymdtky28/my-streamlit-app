@@ -6,13 +6,13 @@ import os
 st.set_page_config(page_title="トヨタ野球成績", layout="wide")
 st.title("⚾ トヨタ自動車 野球打撃成績")
 
-# GitHubにある実際のファイル名に合わせました
+# ファイルの指定
 target = 'data.csv.xlsx'
 
 def load_data():
     if os.path.exists(target):
         try:
-            # Excelファイルとして読み込みます（6行目から）
+            # Excelファイルを読み込み（6行目から）
             df = pd.read_excel(target, header=5)
             return df
         except Exception as e:
@@ -23,8 +23,23 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    st.success("データの読み込みに成功しました！")
-    st.dataframe(df)
+    # --- ここから「トヨタ」に絞り込む処理 ---
+    # 「チーム」という名前の列から「トヨタ自動車」を探します
+    # ※列名が「チーム」でない場合は、エラーが出ないよう処理します
+    try:
+        # チーム名に「トヨタ」を含む行だけを抜き出す
+        df_toyota = df[df['チーム'].str.contains('トヨタ', na=False)]
+        
+        if not df_toyota.empty:
+            st.success("トヨタ自動車のデータを表示しています")
+            st.dataframe(df_toyota, use_container_width=True)
+        else:
+            st.warning("「トヨタ」に一致するデータが見つかりませんでした。全データを表示します。")
+            st.dataframe(df, use_container_width=True)
+            
+    except Exception:
+        # 万が一「チーム」という列名が違った場合は、全てのデータを表示
+        st.info("フィルタリングなしで全データを表示します。")
+        st.dataframe(df, use_container_width=True)
 else:
     st.error("ファイルが見つかりません。")
-    st.write(f"GitHubに '{target}' があるか確認してください。")
