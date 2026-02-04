@@ -1,4 +1,10 @@
 import streamlit as st
 
-st.title("私のStreamlitアプリ")
-st.write("こんにちは！GitHubへの第一歩です。")
+# タイトルを表示
+st.title("私のアプリ")
+
+# メッセージを表示
+st.write("こんにちは！")
+
+# 少し装飾してみるなら
+st.success("GitHubへのアップロード、応援しています！")
