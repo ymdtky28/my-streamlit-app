@@ -36,13 +36,20 @@ if df is not None:
         # 3. 元の全データと合計行を合体させる
         df_all_with_total = pd.concat([df, total_df], ignore_index=True)
         
-        st.success("全データを表示しています（一番下に全体の合計を追加しました）")
+        # 4. 小数点第3位まで表示する項目の設定
+        # 表の中に「打率」「長打率」「出塁率」があれば、0.300 の形式にする
+        format_dict = {}
+        for col in ['打率', '長打率', '出塁率']:
+            if col in df_all_with_total.columns:
+                format_dict[col] = "{:.3f}"
         
-        # 4. 表を表示
-        st.dataframe(df_all_with_total, use_container_width=True)
+        st.success("全データを表示しています（小数点第3位まで表示）")
+        
+        # 5. 表を表示（formatを適用）
+        st.dataframe(df_all_with_total.style.format(format_dict), use_container_width=True)
             
     except Exception as e:
-        st.error(f"計算エラーが発生しました: {e}")
+        st.error(f"エラーが発生しました: {e}")
         st.dataframe(df, use_container_width=True)
 else:
     st.error("ファイルが見つかりません。")
