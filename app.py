@@ -43,13 +43,14 @@ if df is not None:
         for col in numeric_cols:
             format_dict[col] = "{:.0f}"
             
-        # 打率・長打率・出塁率だけ「.300」形式で上書き
-        rate_cols = ['打率', '長打率', '出塁率']
+        # 率の項目（得点圏を追加）だけ「.300」形式で上書き
+        rate_cols = ['打率', '長打率', '出塁率', '得点圏']
         for col in rate_cols:
             if col in df_all_with_total.columns:
+                # 0.300 を .300 に書き換える命令
                 format_dict[col] = lambda x: f"{x:.3f}".replace("0.", ".") if pd.notnull(x) else ""
         
-        st.success("全データを表示しています（率は野球形式、他は整数表示）")
+        st.success("全データを表示しています（率の項目を野球形式に整えました）")
         
         # 5. 表を表示
         st.dataframe(df_all_with_total.style.format(format_dict), use_container_width=True)
