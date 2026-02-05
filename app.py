@@ -1,40 +1,28 @@
 import streamlit as st
 import pandas as pd
 
-# 関数の定義
-def sort_group(target_df):
-    # もし「打率」という列があれば、それで並び替える
-    if "打率" in target_df.columns:
-        return target_df.sort_values(by="打率", ascending=False)
-    return target_df
+st.set_page_config(layout="wide") # 画面を広く使って表を見やすくします
+st.title("野球成績表 表示アプリ")
 
-st.title("トヨタ全打者成績分析")
-
-# ファイルアップローダー
+# 1. ファイルアップローダー
 uploaded_file = st.file_uploader("CSVファイルをアップロードしてください", type="csv")
 
 if uploaded_file is not None:
     try:
-        # 日本語のExcel系CSVに対応するために encoding='cp932' を指定
+        # 日本語Excel系CSVに対応（encoding='cp932'）
         df = pd.read_csv(uploaded_file, encoding='cp932')
         
-        # データの表示
-        st.success("読み込みに成功しました！")
+        # 2. 成績表の表示（シンプルに表だけ）
+        st.subheader("打撃成績一覧")
+        st.dataframe(df, use_container_width=True, height=600)
         
-        # 並び替え関数の呼び出し
-        sorted_df = sort_group(df)
-        
-        # 表を表示
-        st.write("### 成績一覧")
-        st.dataframe(sorted_df)
-
     except Exception as e:
-        # もし上の読み込みでエラーが出た場合の予備（別の文字コードで試す）
+        # エラーが出た場合は別の形式で試行
         try:
-            uploaded_file.seek(0) # 読み込み位置を最初に戻す
+            uploaded_file.seek(0)
             df = pd.read_csv(uploaded_file, encoding='utf-8')
-            st.dataframe(df)
-        except Exception as e2:
-            st.error(f"エラーが発生しました: {e2}")
+            st.dataframe(df, use_container_width=True)
+        except:
+            st.error("ファイルの読み込みに失敗しました。CSV形式であることを確認してください。")
 else:
-    st.info("左側のボタン、またはここにファイルをドラッグ＆ドロップしてください。")
+    st.info("CSVファイルをアップロードしてください。")
