@@ -1,25 +1,30 @@
 import streamlit as st
 import pandas as pd
 
-# 関数の定義（エラーの箇所）
-def sort_group(target_df):
-    # ここでインデント（半角スペース4つ）を入れて処理を書きます
-    # 例：打率が高い順に並び替える
-    if '打率' in target_df.columns:
-        return target_df.sort_values(by='打率', ascending=False)
-    else:
-        return target_df
+# 1. エラーの原因だった関数を正しく定義
+def sort_group(target_df, column_name):
+    # 列名が存在するかチェックして並び替える
+    if column_name in target_df.columns:
+        return target_df.sort_values(by=column_name, ascending=False)
+    return target_df
 
 st.title("打撃成績分析アプリ")
 
-# ファイルの読み込み
+# 2. CSVファイルの読み込み
 uploaded_file = st.file_uploader("CSVファイルをアップロードしてください", type="csv")
 
 if uploaded_file is not None:
+    # データ読み込み（Shift-JISなどでエラーが出る場合は encoding='cp932' を追加）
     df = pd.read_csv(uploaded_file)
     
-    # 関数の呼び出し
-    st.subheader("分析結果")
-    sorted_df = sort_group(df)
-    st.dataframe(sorted_df)
+    # 3. 並び替え対象の列を選択するUI
+    # CSVにある「打率」や「安打」などを選択できるようにします
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    sort_key = st.selectbox("並び替えの基準を選んでください", numeric_cols)
     
+    # 4. 関数を呼び出して結果を表示
+    st.subheader(f"{sort_key} 順のデータ")
+    sorted_df = sort_group(df, sort_key)
+    st.dataframe(sorted_df)
+else:
+    st.info("CSVファイルをアップロードするとデータが表示されます。")
